@@ -230,12 +230,4 @@ We welcome contributions! Here's how to get started:
    - Update documentation
 5. Submit a pull request with a clear description of changes
 
-## 📄 License
 
-This project is open source and available under the [MIT License](LICENSE).
-
-## 🙏 Acknowledgments
-
-- Built with ❤️ using FastAPI and React
-- Icons from [React Icons](https://react-icons.github.io/)
-- Gradient design inspired by modern web trends
