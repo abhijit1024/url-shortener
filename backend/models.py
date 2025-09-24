@@ -1,5 +1,5 @@
-from sqlalchemy import Column, Integer, String, DateTime
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, String, DateTime, func
+from sqlalchemy.orm import declarative_base
 from datetime import datetime
 
 Base = declarative_base()
@@ -11,5 +11,5 @@ class URL(Base):
     short_code = Column(String, unique=True, index=True)
     original_url = Column(String, nullable=False)
     click_count = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, server_default=func.now())
     last_accessed = Column(DateTime, nullable=True)

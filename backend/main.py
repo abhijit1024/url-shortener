@@ -12,7 +12,7 @@ app = FastAPI(title="URL Shortener API")
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5174"],  # React dev server
+    allow_origins=["*"],  # Allow all origins for development
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -23,6 +23,7 @@ Base.metadata.create_all(bind=engine)
 
 class URLRequest(BaseModel):
     original_url: str
+    custom_alias: str = None  # Optional custom alias
 
 def get_db():
     db = SessionLocal()
@@ -33,12 +34,35 @@ def get_db():
 
 @app.post("/shorten")
 def shorten_url(request: URLRequest, db: Session = Depends(get_db)):
-    short_code = secrets.token_urlsafe(6)
-    db_url = URL(short_code=short_code, original_url=request.original_url)
-    db.add(db_url)
-    db.commit()
-    db.refresh(db_url)
-    return {"short_url": f"http://localhost:8000/{short_code}"}
+    try:
+        print(f"Received request to shorten URL: {request.original_url}")
+        
+        # Use custom alias if provided, otherwise generate a random one
+        if request.custom_alias:
+            # Check if custom alias is already in use
+            existing_url = db.query(URL).filter(URL.short_code == request.custom_alias).first()
+            if existing_url:
+                raise HTTPException(status_code=400, detail="Custom alias already in use")
+            short_code = request.custom_alias
+        else:
+            short_code = secrets.token_urlsafe(6)
+        
+        db_url = URL(short_code=short_code, original_url=request.original_url)
+        db.add(db_url)
+        db.commit()
+        db.refresh(db_url)
+        
+        response = {"short_url": f"http://localhost:8000/{short_code}"}
+        print(f"Successfully shortened URL: {response}")
+        return response
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        print(f"Error shortening URL: {str(e)}")
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.get("/{short_code}")
 def redirect_to_url(short_code: str, db: Session = Depends(get_db)):
