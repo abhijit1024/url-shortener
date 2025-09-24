@@ -1,27 +1,33 @@
 # URL Shortener
 
-A full-stack URL shortener application built with FastAPI and React.
+A full-stack URL shortener application built with FastAPI and React, featuring dark/light mode and custom aliases.
 
-## Features
+## ✨ Features
 
-- Shorten long URLs into compact, shareable links
-- Fast redirection to original URLs
-- Modern, responsive UI
-- One-click copy to clipboard
-- Beautiful gradient design with animations
+- **URL Shortening**: Convert long URLs into short, easy-to-share links
+- **Custom Aliases**: Create personalized short URLs with custom endpoints
+- **Dark/Light Mode**: Toggle between themes for comfortable viewing
+- **Recent Links**: View and manage your recently shortened URLs
+- **One-Click Copy**: Instantly copy shortened links to clipboard
+- **Responsive Design**: Works seamlessly on desktop and mobile devices
+- **Modern UI**: Clean, intuitive interface with smooth animations
 
-## Tech Stack
+## 🛠️ Tech Stack
 
 ### Backend
 - **FastAPI** - Modern, fast web framework for building APIs
 - **SQLAlchemy** - SQL toolkit and Object-Relational Mapping
 - **SQLite** - Lightweight database
 - **Uvicorn** - ASGI server
+- **Pydantic** - Data validation and settings management
+- **CORS Middleware** - For handling cross-origin requests
 
 ### Frontend  
-- **React** - JavaScript library for building user interfaces
+- **React 18** - JavaScript library for building user interfaces
 - **Vite** - Fast build tool and development server
-- **Modern CSS** - Responsive design with animations
+- **Modern CSS** - Responsive design with animations and transitions
+- **Context API** - For state management
+- **Clipboard API** - For one-click copy functionality
 
 ## Prerequisites
 
@@ -109,37 +115,79 @@ The frontend will be available at: `http://localhost:5173`
 4. Copy the shortened URL or click "Visit" to test it
 5. The shortened URL will redirect to the original URL
 
-## API Endpoints
+## 🔌 API Endpoints
 
-- `POST /shorten` - Create a shortened URL
-- `GET /{short_code}` - Redirect to original URL
+### Create Short URL
+- **Endpoint**: `POST /shorten`
+- **Request Body**:
+  ```json
+  {
+    "original_url": "https://example.com/very/long/url",
+    "custom_alias": "example" // Optional
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "short_url": "http://localhost:8000/abc123"
+  }
+  ```
 
-## Project Structure
+### Redirect to Original URL
+- **Endpoint**: `GET /{short_code}`
+- **Response**: 302 Redirect to the original URL
+
+### Error Responses
+- `400 Bad Request`: Invalid URL format or missing required fields
+- `400 Bad Request`: Custom alias already in use
+- `404 Not Found`: Short URL not found
+
+## 📁 Project Structure
 
 ```
 url-shortener/
 ├── backend/
-│   ├── main.py          # FastAPI application
-│   ├── database.py      # Database configuration
-│   ├── models.py        # SQLAlchemy models
+│   ├── main.py          # FastAPI application and routes
+│   ├── database.py      # Database configuration and session management
+│   ├── models.py        # SQLAlchemy models and schemas
 │   └── requirements.txt # Python dependencies
 ├── frontend/
 │   ├── src/
-│   │   ├── App.jsx      # Main React component
-│   │   ├── App.css      # Styling
-│   │   └── main.jsx     # React entry point
-│   ├── package.json     # Node.js dependencies
+│   │   ├── App.jsx      # Main React component with routing
+│   │   ├── App.css      # Global styles and theming
+│   │   ├── main.jsx     # React entry point with providers
+│   │   └── assets/      # Static assets and icons
+│   ├── package.json     # Node.js dependencies and scripts
 │   └── vite.config.js   # Vite configuration
-└── README.md
+├── .gitignore          # Git ignore rules
+└── README.md           # Project documentation
 ```
 
-## Development Notes
+## 🚀 Development Notes
 
-- The backend runs on port 8000 by default
-- The frontend runs on port 5173 by default
-- CORS is configured to allow requests from the frontend
-- The SQLite database file (`url_shortener.db`) will be created automatically
-- Hot reload is enabled for both backend and frontend during development
+### Backend
+- Runs on port 8000 by default
+- CORS is configured to allow all origins in development
+- SQLite database (`url_shortener.db`) is automatically created
+- Hot reload enabled with `--reload` flag
+- Debug mode provides detailed error messages
+
+### Frontend
+- Runs on port 5173 by default
+- Uses Vite's fast refresh for instant updates
+- Environment variables can be configured in `.env`
+- Dark/light mode preference is saved to localStorage
+- Responsive design tested on common screen sizes
+
+### Environment Variables
+Create a `.env` file in the root directory:
+```env
+# Backend
+DATABASE_URL=sqlite:///./url_shortener.db
+
+# Frontend
+VITE_API_BASE_URL=http://localhost:8000
+```
 
 ## Troubleshooting
 
@@ -158,14 +206,36 @@ url-shortener/
 - Backend should be on `http://localhost:8000`
 - Frontend should be on `http://localhost:5173`
 
-## Contributing
+## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+We welcome contributions! Here's how to get started:
 
-## License
+1. Fork the repository and create your feature branch
+2. Set up the development environment
+   ```bash
+   # Backend
+   cd backend
+   python -m venv venv
+   source venv/bin/activate  # or venv\Scripts\activate on Windows
+   pip install -r requirements.txt
+   
+   # Frontend
+   cd ../frontend
+   npm install
+   ```
+3. Make your changes and test thoroughly
+4. Ensure code quality:
+   - Follow existing code style
+   - Add/update tests if applicable
+   - Update documentation
+5. Submit a pull request with a clear description of changes
 
-This project is open source and available under the MIT License.
+## 📄 License
+
+This project is open source and available under the [MIT License](LICENSE).
+
+## 🙏 Acknowledgments
+
+- Built with ❤️ using FastAPI and React
+- Icons from [React Icons](https://react-icons.github.io/)
+- Gradient design inspired by modern web trends
