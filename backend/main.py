@@ -14,8 +14,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",  # Local development
-        "https://url-shortener-frontend.vercel.app",  # Your Vercel frontend
-        "https://url-shortener-7v3b.onrender.com"  # Your Render backend
+        "url-shortener-iota-wine.vercel.app",  # Your Vercel frontend
+        "https://url-shortener-n0rj.onrender.com"  # Your Render backend
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
