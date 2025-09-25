@@ -21,23 +21,29 @@ A full-stack URL shortener application built with FastAPI and React, featuring d
 - **Uvicorn** - ASGI server
 - **Pydantic** - Data validation and settings management
 - **CORS Middleware** - For handling cross-origin requests
+- **Alembic** - Database migrations
+- **JWT** - JSON Web Tokens for authentication
 
 ### Frontend  
 - **React 18** - JavaScript library for building user interfaces
 - **Vite** - Fast build tool and development server
-- **Modern CSS** - Responsive design with animations and transitions
-- **Context API** - For state management
+- **Tailwind CSS** - Utility-first CSS framework
+- **React Router** - Client-side routing
+- **Axios** - HTTP client
+- **React Hot Toast** - Toast notifications
+- **React Icons** - Popular icon library
 - **Clipboard API** - For one-click copy functionality
 
-## Prerequisites
+## 🚀 Prerequisites
 
 Before running this project, make sure you have:
 
 - **Python 3.8+** installed
 - **Node.js 16+** and **npm** installed
 - **Git** for cloning the repository
+- **Windows, macOS, or Linux** operating system
 
-## Installation & Setup
+## 🚀 Installation & Setup
 
 ### 1. Clone the Repository
 
@@ -46,7 +52,35 @@ git clone https://github.com/yourusername/url-shortener.git
 cd url-shortener
 ```
 
-### 2. Backend Setup
+### 2. Automatic Setup (Recommended)
+
+#### For Linux/macOS:
+```bash
+chmod +x setup.sh
+./setup.sh
+```
+
+#### For Windows:
+1. Open PowerShell as Administrator
+2. Run the following command to allow script execution:
+   ```powershell
+   Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+   ```
+3. Run the setup script:
+   ```powershell
+   .\setup.ps1
+   ```
+
+This will:
+- Set up a Python virtual environment
+- Install backend dependencies
+- Install frontend dependencies
+- Create necessary directories
+- Initialize the database
+
+### 3. Manual Setup (Alternative)
+
+#### Backend Setup
 
 ```bash
 # Navigate to backend directory
