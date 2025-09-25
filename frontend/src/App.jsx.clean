@@ -7,6 +7,7 @@ function App() {
   const [shortUrl, setShortUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [stats, setStats] = useState(null);
   const [recentLinks, setRecentLinks] = useState([]);
   const [darkMode, setDarkMode] = useState(false);
   const [showToast, setShowToast] = useState(false);
@@ -46,6 +47,7 @@ function App() {
     setLoading(true);
     setError('');
     setShortUrl('');
+    setStats(null);
 
     try {
       if (!originalUrl) {
