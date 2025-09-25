@@ -20,11 +20,13 @@ export default defineConfig(({ mode }) => {
             }],
           ],
           plugins: [
+            '@emotion/babel-plugin',
             ['@babel/plugin-transform-runtime', {
               regenerator: true,
             }],
           ],
         },
+        jsxImportSource: '@emotion/react',
       }),
     ],
     resolve: {
