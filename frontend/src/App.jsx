@@ -213,7 +213,7 @@ function App() {
 
       <main className="main-content">
         <div className="url-form-container">
-          <h2>Shorten a new URL</h2>
+          <h2>Shorten URL</h2>
           <form onSubmit={handleSubmit} className="url-form">
             <div className="input-group">
               <input
@@ -286,8 +286,6 @@ function App() {
           
           {shortUrl && (
             <div className="result animate-in">
-              <div className="success-icon">✅</div>
-              <h3>Your shortened URL is ready!</h3>
               <div className="short-url-container">
                 <input 
                   type="text" 
