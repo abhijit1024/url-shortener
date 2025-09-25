@@ -22,7 +22,8 @@ app.add_middleware(
         "http://localhost:5174",  # Vite alternate port
         "http://localhost:3000",  # Create React App default port
         "http://127.0.0.1:5173",  # Vite with 127.0.0.1
-        "http://127.0.0.1:3000"   # CRA with 127.0.0.1
+        "http://127.0.0.1:3000",  # CRA with 127.0.0.1
+        "https://*.vercel.app"     # All Vercel deployments
     ],
     allow_credentials=True,
     allow_methods=["*"],

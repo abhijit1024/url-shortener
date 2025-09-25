@@ -1,12 +1,48 @@
-# React + Vite
+# URL Shortener Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is the frontend for the URL Shortener application, built with React and Vite.
 
-Currently, two official plugins are available:
+## Development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-## Expanding the ESLint configuration
+2. Start the development server:
+   ```bash
+   npm run dev
+   ```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Building for Production
+
+```bash
+npm run build
+```
+
+## Deployment
+
+This frontend is configured to be deployed on Vercel. The deployment is automated via GitHub integration.
+
+### Environment Variables
+
+Create a `.env` file in the frontend directory with the following variables:
+
+```env
+VITE_API_BASE_URL=https://your-render-backend-url.onrender.com
+```
+
+### Vercel Configuration
+
+- **Framework Preset**: Vite
+- **Build Command**: `npm run build`
+- **Output Directory**: `dist`
+- **Install Command**: `npm install`
+- **Environment Variables**:
+  - `VITE_API_BASE_URL`: Your Render backend URL
+
+## Testing
+
+```bash
+npm test
+```
