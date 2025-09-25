@@ -17,18 +17,12 @@ app = FastAPI(title="URL Shortener API")
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",  # Vite default port
-        "http://localhost:5174",  # Vite alternate port
-        "http://localhost:3000",  # Create React App default port
-        "http://127.0.0.1:5173",  # Vite with 127.0.0.1
-        "http://127.0.0.1:3000",  # CRA with 127.0.0.1
-        "https://*.vercel.app"     # All Vercel deployments
-    ],
+    allow_origins=["*"],  # For development, allow all origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"]
+    expose_headers=["*"],
+    max_age=600
 )
 
 # Create tables

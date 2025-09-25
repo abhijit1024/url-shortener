@@ -7,11 +7,17 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
   return {
+    build: {
+      rollupOptions: {
+        external: ['@emotion/react/jsx-runtime']
+      }
+    },
     plugins: [
       react({
         // Enable Fast Refresh
         fastRefresh: true,
-        // Babel configuration
+        // Add Emotion support
+        jsxImportSource: '@emotion/react',
         babel: {
           presets: [
             ['@babel/preset-react', {

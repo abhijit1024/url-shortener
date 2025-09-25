@@ -12,11 +12,14 @@ if 'RENDER' in os.environ:
     engine = create_engine(DATABASE_URL)
 else:
     # For local SQLite
-    SQLITE_PATH = "instance/url_shortener.db" if 'RENDER' in os.environ else "url_shortener.db"
-    DATABASE_URL = f"sqlite:///{SQLITE_PATH}"
+    if 'RENDER' in os.environ:
+        SQLITE_PATH = "instance/url_shortener.db"
+        # Ensure the instance directory exists
+        os.makedirs("instance", exist_ok=True)
+    else:
+        SQLITE_PATH = "url_shortener.db"
     
-    # Ensure the directory exists
-    os.makedirs(os.path.dirname(SQLITE_PATH), exist_ok=True)
+    DATABASE_URL = f"sqlite:///{SQLITE_PATH}"
     engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
