@@ -33,12 +33,26 @@ function App() {
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://url-shortener-n0rj.onrender.com';
 
+  const showToastMessage = (message, duration = 3000) => {
+    setToastMessage(message);
+    setShowToast(true);
+    if (toastTimer.current) {
+      clearTimeout(toastTimer.current);
+    }
+    toastTimer.current = setTimeout(() => setShowToast(false), duration);
+  };
+
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-    setShortUrl('')
-    setStats(null)
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setShortUrl('');
+    setStats(null);
+    
+    // Clear any existing timeouts
+    if (toastTimer.current) {
+      clearTimeout(toastTimer.current);
+    }
 
     try {
       // Basic URL validation
@@ -57,9 +71,6 @@ function App() {
         payload.custom_alias = customAlias
       }
 
-      console.log('Sending request to:', `${API_BASE_URL}/shorten`);
-      console.log('Request payload:', JSON.stringify(payload, null, 2));
-      
       const requestOptions = {
         method: 'POST',
         headers: {
@@ -69,29 +80,34 @@ function App() {
         body: JSON.stringify(payload),
       };
       
-      console.log('Request options:', requestOptions);
+      // Add timeout to the fetch request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
       
-      const response = await fetch(`${API_BASE_URL}/shorten`, requestOptions);
+      const response = await fetch(`${API_BASE_URL}/shorten`, {
+        ...requestOptions,
+        signal: controller.signal
+      }).finally(() => clearTimeout(timeoutId));
       
-      console.log('Response status:', response.status);
       const responseText = await response.text();
-      console.log('Raw response:', responseText);
-      
       let data;
+      
       try {
         data = responseText ? JSON.parse(responseText) : {};
-        console.log('Parsed response data:', data);
       } catch (e) {
         console.error('Failed to parse response as JSON:', e);
-        throw new Error('Invalid response from server');
+        throw new Error('The server returned an invalid response. Please try again.');
       }
       
       if (!response.ok) {
-        throw new Error(data.detail || `HTTP error! status: ${response.status}`);
+        const errorMessage = data.detail || 
+                          data.message || 
+                          `Error: ${response.status} ${response.statusText}`;
+        throw new Error(errorMessage);
       }
 
       if (!data.short_url) {
-        throw new Error('Invalid response from server: missing short_url');
+        throw new Error('The server did not return a valid short URL.');
       }
 
       setShortUrl(data.short_url)
@@ -105,30 +121,34 @@ function App() {
       }
       const updatedLinks = [newLink, ...recentLinks].slice(0, 5) // Keep only last 5
       setRecentLinks(updatedLinks)
-      localStorage.setItem('recentLinks', JSON.stringify(updatedLinks))
       
       // Fetch stats (you'll need to implement this endpoint)
       // fetchStats(data.short_url)
       
     } catch (err) {
-      console.error('Error in handleSubmit:', err);
-      setError(err.message || 'An error occurred while shortening the URL');
+      console.error('Error:', err);
+      const errorMessage = err.name === 'AbortError' 
+        ? 'Request timed out. Please check your connection and try again.'
+        : err.message || 'An unexpected error occurred. Please try again.';
+      
+      setError(errorMessage);
+      showToastMessage(errorMessage, 5000);
     } finally {
       setLoading(false);
-    }
-  }
-
-  const fetchStats = async (url) => {
-    try {
-      // You'll need to implement this endpoint in your backend
-      const response = await fetch(`http://localhost:8000/stats?url=${encodeURIComponent(url)}`)
-      if (response.ok) {
-        const data = await response.json()
-        setStats(data)
+      if (error) {
+        setTimeout(() => setError(''), 5000);
       }
-    } catch (err) {
-      console.error('Error fetching stats:', err)
-    }
+      
+      // You can implement stats fetching later if needed
+      // try {
+      //   const response = await fetch(`${API_BASE_URL}/stats?url=${encodeURIComponent(shortUrl)}`);
+      //   if (response.ok) {
+      //     const data = await response.json();
+      //     setStats(data);
+      //   }
+      // } catch (err) {
+      //   console.error('Error fetching stats:', err);
+      // }
   }
 
 
