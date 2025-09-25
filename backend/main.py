@@ -1,241 +1,47 @@
-from fastapi import FastAPI, HTTPException, Depends, status, Request, Query, Response
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.encoders import jsonable_encoder
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-from pydantic import BaseModel, HttpUrl, Field, validator, AnyUrl
-from datetime import datetime, timedelta
+from sqlalchemy import desc
+from pydantic import BaseModel
+from typing import List, Optional
+from datetime import datetime
 import secrets
-import time
-import re
-import logging
-import uvicorn
-import sys
-from pathlib import Path
-from typing import Optional, List, Dict, Any
+import json
 
-# Add the parent directory to the Python path
-sys.path.append(str(Path(__file__).parent.parent))
+from database import SessionLocal, engine
+from models import Base, URL
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+app = FastAPI(title="URL Shortener API")
 
-# Import database and models
-from backend.database import SessionLocal, get_db, Base, engine
-from backend.models import URL
-
-# Security
-oauth2_scheme = HTTPBearer(auto_error=False)  # Make authentication optional
-
-# Rate limiting configuration
-RATE_LIMIT = 100  # requests per window
-RATE_LIMIT_WINDOW = 60  # seconds
-
-# In-memory rate limit store (consider using Redis in production)
-rate_limit_store: Dict[str, List[float]] = {}
-
-def get_client_ip(request: Request) -> str:
-    """Get client IP address from request."""
-    if "x-forwarded-for" in request.headers:
-        return request.headers["x-forwarded-for"].split(",")[0]
-    return request.client.host if request.client else "127.0.0.1"
-
-def check_rate_limit(ip: str) -> Dict[str, Any]:
-    """Check if the request is within rate limits."""
-    current_time = time.time()
-    window_start = current_time - RATE_LIMIT_WINDOW
-    
-    # Clean up old entries
-    if ip in rate_limit_store:
-        rate_limit_store[ip] = [t for t in rate_limit_store[ip] if t > window_start]
-    
-    # Initialize if not exists
-    if ip not in rate_limit_store:
-        rate_limit_store[ip] = []
-    
-    # Check rate limit
-    request_count = len(rate_limit_store[ip])
-    if request_count >= RATE_LIMIT:
-        return {
-            "allowed": False,
-            "remaining": 0,
-            "reset_time": window_start + RATE_LIMIT_WINDOW
-        }
-    
-    # Add current request
-    rate_limit_store[ip].append(current_time)
-    
-    return {
-        "allowed": True,
-        "remaining": RATE_LIMIT - request_count - 1,
-        "reset_time": window_start + RATE_LIMIT_WINDOW
-    }
-
-# Initialize FastAPI app
-app = FastAPI(
-    title="URL Shortener API",
-    description="A secure and scalable URL shortening service with rate limiting",
-    version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json"
-)
-
-# Create database tables
-Base.metadata.create_all(bind=engine)
-
-# Security
-oauth2_scheme = HTTPBearer(auto_error=False)
-
-# Configure CORS
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:8001",
-        "http://127.0.0.1:8001",
+        "http://localhost:5173",  # Vite default port
+        "http://localhost:5174",  # Vite alternate port
+        "http://localhost:3000",  # Create React App default port
+        "http://127.0.0.1:5173",  # Vite with 127.0.0.1
+        "http://127.0.0.1:3000"   # CRA with 127.0.0.1
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS", "HEAD"],
+    allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
+    expose_headers=["*"]
 )
-
-# Add GZip compression for responses
-app.add_middleware(GZipMiddleware, minimum_size=1000)
-
-# Rate limiting configuration
-RATE_LIMIT = 100  # requests per window
-RATE_LIMIT_WINDOW = 60  # seconds
-
-# In-memory rate limit store (consider using Redis in production)
-rate_limit_store: Dict[str, List[float]] = {}
-
-def get_client_ip(request: Request) -> str:
-    """Get client IP address from request."""
-    if "x-forwarded-for" in request.headers:
-        return request.headers["x-forwarded-for"].split(",")[0]
-    return request.client.host if request.client else "127.0.0.1"
-
-def check_rate_limit(ip: str) -> Dict[str, Any]:
-    """Check if the request is within rate limits."""
-    current_time = time.time()
-    window_start = current_time - RATE_LIMIT_WINDOW
-    
-    # Clean up old entries
-    if ip in rate_limit_store:
-        rate_limit_store[ip] = [t for t in rate_limit_store[ip] if t > window_start]
-    
-    # Initialize if not exists
-    if ip not in rate_limit_store:
-        rate_limit_store[ip] = []
-    
-    # Check rate limit
-    request_count = len(rate_limit_store[ip])
-    if request_count >= RATE_LIMIT:
-        return {
-            "allowed": False,
-            "remaining": 0,
-            "reset_time": window_start + RATE_LIMIT_WINDOW
-        }
-    
-    # Add current request
-    rate_limit_store[ip].append(current_time)
-    
-    return {
-        "allowed": True,
-        "remaining": RATE_LIMIT - request_count - 1,
-        "reset_time": window_start + RATE_LIMIT_WINDOW
-    }
-
-# Add rate limiting middleware
-@app.middleware("http")
-async def rate_limit_middleware(request: Request, call_next):
-    # Skip rate limiting for docs and redoc
-    if request.url.path in ["/docs", "/redoc", "/openapi.json"]:
-        return await call_next(request)
-        
-    client_ip = get_client_ip(request)
-    rate_limit = check_rate_limit(client_ip)
-    
-    response = await call_next(request)
-    
-    # Add rate limit headers to response
-    response.headers["X-RateLimit-Limit"] = str(RATE_LIMIT)
-    response.headers["X-RateLimit-Remaining"] = str(rate_limit["remaining"])
-    response.headers["X-RateLimit-Reset"] = str(int(rate_limit["reset_time"] - time.time()))
-    
-    if not rate_limit["allowed"]:
-        return JSONResponse(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            content={"detail": "Too many requests"},
-            headers={
-                "Retry-After": str(int(rate_limit["reset_time"] - time.time()))
-            }
-        )
-    
-    return response
-
-# Add rate limiting middleware
-@app.middleware("http")
-async def rate_limit_middleware(request: Request, call_next):
-    # Skip rate limiting for docs and redoc
-    if request.url.path in ["/docs", "/redoc", "/openapi.json"]:
-        return await call_next(request)
-        
-    client_ip = get_client_ip(request)
-    rate_limit = check_rate_limit(client_ip)
-    
-    response = await call_next(request)
-    
-    # Add rate limit headers to response
-    response.headers["X-RateLimit-Limit"] = str(RATE_LIMIT)
-    response.headers["X-RateLimit-Remaining"] = str(rate_limit["remaining"])
-    response.headers["X-RateLimit-Reset"] = str(int(rate_limit["reset_time"] - time.time()))
-    
-    if not rate_limit["allowed"]:
-        return JSONResponse(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            content={"detail": "Too many requests"},
-            headers={
-                "Retry-After": str(int(rate_limit["reset_time"] - time.time()))
-            }
-        )
-    
-    return response
-app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Create tables
 Base.metadata.create_all(bind=engine)
 
 class URLRequest(BaseModel):
-    original_url: str = Field(..., description="The original URL to be shortened")
-    custom_alias: Optional[str] = Field(
-        None,
-        min_length=3,
-        max_length=20,
-        pattern=r'^[a-zA-Z0-9_-]+$',
-        description="Optional custom alias (3-20 chars, alphanumeric, underscores, hyphens)"
-    )
-    expires_in_days: Optional[int] = Field(
-        None,
-        ge=1,
-        le=365,
-        description="Number of days until the URL expires (1-365)"
-    )
+    original_url: str
+    custom_alias: Optional[str] = None
 
-    @validator('original_url')
-    def validate_url(cls, v):
-        if not URL.validate_url(v):
-            raise ValueError('Invalid URL format')
-        return v
+class URLResponse(BaseModel):
+    id: int
+    original_url: str
+    short_code: str
+    created_at: str
 
 def get_db():
     db = SessionLocal()
@@ -244,155 +50,106 @@ def get_db():
     finally:
         db.close()
 
-@app.middleware("http")
-async def rate_limit_middleware(request: Request, call_next):
-    client_ip = request.client.host
-    if not check_rate_limit(client_ip):
-        return JSONResponse(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            content={"detail": "Rate limit exceeded. Please try again later."},
-            headers={"Retry-After": str(RATE_LIMIT_WINDOW)}
-        )
-    response = await call_next(request)
-    return response
-
-@app.exception_handler(Exception)
-async def validation_exception_handler(request, exc):
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"detail": "An unexpected error occurred. Please try again later."},
-    )
-
-@app.post("/shorten", response_model=dict, status_code=status.HTTP_201_CREATED)
-async def shorten_url(
-    request: URLRequest,
-    db: Session = Depends(get_db),
-    credentials: HTTPAuthorizationCredentials = Depends(oauth2_scheme)
+# URL endpoints
+@app.post("/shorten")
+def shorten_url(
+    request: URLRequest, 
+    db: Session = Depends(get_db)
 ):
-    try:
-        # In a real app, verify the token here
-        # For now, we'll just log it
-        print(f"Authenticated request with token: {credentials.credentials[:10]}...")
-
-        # Check if URL is already shortened
+    # Check if URL already exists and no custom alias is provided
+    if not request.custom_alias:
         existing_url = db.query(URL).filter(URL.original_url == request.original_url).first()
-        if existing_url and not request.custom_alias:
+        if existing_url:
             return {
                 "short_url": f"http://localhost:8000/{existing_url.short_code}",
-                "already_exists": True
+                "short_code": existing_url.short_code
             }
-
-        # Generate or validate short code
-        if request.custom_alias:
-            if not re.match(r'^[a-zA-Z0-9_-]{3,20}$', request.custom_alias):
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Custom alias must be 3-20 characters long and contain only letters, numbers, underscores, or hyphens"
-                )
-            
-            # Check if custom alias is already in use
-            if db.query(URL).filter(URL.short_code == request.custom_alias).first():
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Custom alias already in use"
-                )
-            short_code = request.custom_alias
-        else:
-            # Generate a unique short code
-            max_attempts = 5
-            for _ in range(max_attempts):
-                short_code = URL.generate_short_code()
-                if not db.query(URL).filter(URL.short_code == short_code).first():
-                    break
-            else:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Failed to generate a unique short code"
-                )
         
-        # Set expiration if specified
-        expires_at = None
-        if request.expires_in_days:
-            expires_at = datetime.utcnow() + timedelta(days=request.expires_in_days)
-        
-        # Create URL record
-        db_url = URL(
-            short_code=short_code,
-            original_url=request.original_url,
-            expires_at=expires_at,
-            is_active=True
-        )
-        
-        db.add(db_url)
-        db.commit()
-        db.refresh(db_url)
-        
-        return {
-            "short_url": f"http://localhost:8000/{short_code}",
-            "expires_at": expires_at.isoformat() if expires_at else None,
-            "already_exists": False
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        db.rollback()
-        print(f"Error shortening URL: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while processing your request"
-        )
-
-@app.get("/{short_code}", response_class=RedirectResponse)
-async def redirect_to_url(
-    short_code: str, 
-    db: Session = Depends(get_db),
-    request: Request = None
-):
-    try:
-        # Get URL from database
-        db_url = db.query(URL).filter(URL.short_code == short_code).first()
-        
-        # Check if URL exists
-        if not db_url:
+        # Generate a random short code if no custom alias is provided
+        while True:
+            short_code = secrets.token_urlsafe(4)
+            if not db.query(URL).filter(URL.short_code == short_code).first():
+                break
+    else:
+        # Validate custom alias format
+        if not request.custom_alias.isalnum():
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="URL not found"
+                status_code=400,
+                detail="Custom alias can only contain letters and numbers"
+            )
+        if len(request.custom_alias) < 3 or len(request.custom_alias) > 20:
+            raise HTTPException(
+                status_code=400,
+                detail="Custom alias must be between 3 and 20 characters long"
             )
         
-        # Check if URL is active
-        if not db_url.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_410_GONE,
-                detail="This URL has been deactivated"
-            )
+        # Check if the exact alias exists for the same URL
+        existing_url = db.query(URL).filter(
+            URL.original_url == request.original_url,
+            URL.short_code == request.custom_alias
+        ).first()
         
-        # Check if URL has expired
-        if db_url.expires_at and datetime.utcnow() > db_url.expires_at:
-            db_url.is_active = False
-            db.commit()
-            raise HTTPException(
-                status_code=status.HTTP_410_GONE,
-                detail="This URL has expired"
-            )
+        if existing_url:
+            return {
+                "short_url": f"http://localhost:8000/{existing_url.short_code}",
+                "short_code": existing_url.short_code
+            }
         
-        # Update click count and last accessed time
-        db_url.increment_click_count(db)
+        # If the exact alias exists for a different URL, find a unique one
+        base_alias = request.custom_alias
+        counter = 1
+        short_code = base_alias
         
-        # Log the access (in a real app, you might want to store more details)
-        user_agent = request.headers.get('user-agent', 'unknown')
-        referrer = request.headers.get('referer', 'direct')
-        print(f"Redirect: {short_code} -> {db_url.original_url} (User-Agent: {user_agent}, Referrer: {referrer})")
-        
-        # Redirect to the original URL
-        return db_url.original_url
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Error redirecting URL: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while processing your request"
-        )
+        while db.query(URL).filter(URL.short_code == short_code).first() is not None:
+            # Keep the alias under 20 characters
+            suffix = str(counter)
+            if len(base_alias) + len(suffix) > 20:
+                # If adding the counter would exceed 20 chars, truncate the base alias
+                base_alias = base_alias[:20 - len(suffix)]
+            short_code = f"{base_alias}{suffix}"
+            counter += 1
+    
+    # Create and save the URL
+    db_url = URL(
+        original_url=request.original_url, 
+        short_code=short_code
+    )
+    db.add(db_url)
+    db.commit()
+    db.refresh(db_url)
+    
+    return {
+        "short_url": f"http://localhost:8000/{short_code}",
+        "short_code": short_code
+    }
 
+@app.get("/{short_code}")
+def redirect_to_url(short_code: str, db: Session = Depends(get_db)):
+    db_url = db.query(URL).filter(URL.short_code == short_code).first()
+    if db_url is None:
+        raise HTTPException(status_code=404, detail="URL not found")
+    
+    return RedirectResponse(url=db_url.original_url)
+
+@app.get("/api/history", response_model=List[dict])
+async def get_history(db: Session = Depends(get_db)):
+    urls = db.query(URL).order_by(desc(URL.created_at)).all()
+    return [{
+        "id": url.id,
+        "original_url": url.original_url,
+        "short_code": url.short_code,
+        "short_url": f"http://localhost:8000/{url.short_code}",
+        "created_at": url.created_at.isoformat() if url.created_at else None
+    } for url in urls]
+
+@app.get("/api/url/{short_code}")
+async def get_url(short_code: str, db: Session = Depends(get_db)):
+    url = db.query(URL).filter(URL.short_code == short_code).first()
+    if not url:
+        raise HTTPException(status_code=404, detail="URL not found")
+    return {
+        "original_url": url.original_url,
+        "short_code": url.short_code,
+        "short_url": f"http://localhost:8000/{url.short_code}",
+        "created_at": url.created_at.isoformat() if url.created_at else None
+    }
