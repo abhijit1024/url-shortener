@@ -12,10 +12,15 @@ app = FastAPI(title="URL Shortener API")
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development
+    allow_origins=[
+        "http://localhost:5173",  # Local development
+        "https://url-shortener-frontend.vercel.app",  # Your Vercel frontend
+        "https://url-shortener-7v3b.onrender.com"  # Your Render backend
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["Content-Length", "X-Foo", "X-Bar"],
 )
 
 # Create tables
